@@ -7,10 +7,14 @@ terraform.tfstate.backup
 *.tfvars.json
 *.tfplan
 
-# Lambda zip files
+# Lambda zip files and packages
 *.zip
 lambda/*.zip
 terraform/*.zip
+terraform/lambda_packages/
+
+# Test responses (generated files)
+tests/responses/*.json
 
 # OS
 .DS_Store

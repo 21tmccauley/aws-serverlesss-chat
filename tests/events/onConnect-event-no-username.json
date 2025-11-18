@@ -1,0 +1,15 @@
+{
+  "requestContext": {
+    "connectionId": "test-connection-456",
+    "domainName": "b32w7k8h1j.execute-api.us-east-1.amazonaws.com",
+    "stage": "dev",
+    "apiId": "b32w7k8h1j",
+    "connectedAt": 1234567890000
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Host": "b32w7k8h1j.execute-api.us-east-1.amazonaws.com",
+    "X-Forwarded-For": "127.0.0.1"
+  }
+}
+

@@ -1,15 +1,16 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 
 const dynamoClient = new DynamoDBClient({});
 const dynamodb = DynamoDBDocumentClient.from(dynamoClient);
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   const connectionId = event.requestContext.connectionId;
   const username = event.queryStringParameters?.username || 'Anonymous';
+  const tableName = process.env.CONNECTIONS_TABLE;
   
   await dynamodb.send(new PutCommand({
-    TableName: 'Connections',
+    TableName: tableName,
     Item: {
       connectionId: connectionId,
       username: username,

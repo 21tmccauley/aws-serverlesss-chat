@@ -1,15 +1,17 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
-import { ApiGatewayManagementApiClient, PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
+const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 
 const dynamoClient = new DynamoDBClient({});
 const dynamodb = DynamoDBDocumentClient.from(dynamoClient);
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   const connectionId = event.requestContext.connectionId;
   const body = JSON.parse(event.body);
   const message = body.message;
   const username = body.username || 'Anonymous';
+  const connectionsTable = process.env.CONNECTIONS_TABLE;
+  const messagesTable = process.env.MESSAGES_TABLE;
   
   // Get the API Gateway endpoint URL
   const domainName = event.requestContext.domainName;
@@ -23,7 +25,7 @@ export const handler = async (event) => {
   // Save message to DynamoDB
   const messageId = Date.now().toString();
   await dynamodb.send(new PutCommand({
-    TableName: 'Messages',
+    TableName: messagesTable,
     Item: {
       messageId: messageId,
       timestamp: new Date().toISOString(),
@@ -34,7 +36,7 @@ export const handler = async (event) => {
   
   // Get all active connections
   const connectionsResult = await dynamodb.send(new ScanCommand({
-    TableName: 'Connections'
+    TableName: connectionsTable
   }));
   
   // Broadcast message to all connections
@@ -52,7 +54,7 @@ export const handler = async (event) => {
       // If connection no longer exists (410 error), remove it from table
       if (err.statusCode === 410) {
         await dynamodb.send(new DeleteCommand({
-          TableName: 'Connections',
+          TableName: connectionsTable,
           Key: { connectionId: connection.connectionId }
         }));
       }

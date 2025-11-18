@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Morphing Shapes inspired vibrant theme */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    /* Vibrant morphing colors palette */
+    /* Purple: rgb(155, 93, 229) -> hsl(262, 73%, 63%) */
+    /* Pink: rgb(241, 91, 181) -> hsl(325, 85%, 65%) */
+    /* Yellow: rgb(254, 228, 64) -> hsl(52, 98%, 62%) */
+    /* Cyan: rgb(0, 187, 249) -> hsl(195, 100%, 49%) */
+    /* Teal: rgb(0, 245, 212) -> hsl(172, 100%, 48%) */
+    /* Blue-gray: rgb(176, 190, 197) -> hsl(200, 15%, 73%) */
+    
+    --primary: 262 73% 63%;
+    --primary-foreground: 0 0% 100%;
+    
+    --gradient-start: 262 73% 63%;
+    --gradient-end: 325 85% 65%;
+    
+    --accent-gradient-start: 195 100% 49%;
+    --accent-gradient-end: 172 100% 48%;
+
+    --secondary: 200 15% 96%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 200 15% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 325 85% 65%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 15% 85%;
+    --input: 200 15% 90%;
+    --ring: 262 73% 63%;
+
+    /* Morphing shape colors for use in components */
+    --morph-purple: 262 73% 63%;
+    --morph-pink: 325 85% 65%;
+    --morph-yellow: 52 98% 62%;
+    --morph-cyan: 195 100% 49%;
+    --morph-teal: 172 100% 48%;
+    --morph-blue-gray: 200 15% 73%;
+    --morph-light: 0 0% 96%;
+
+    --radius: 1.5rem;
+
+    /* Shadows - subtle and soft */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 4px 16px 0 rgba(0, 0, 0, 0.12);
+    --shadow-xl: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+
+    /* Animations */
+    --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .dark {
+    /* Dark mode with vibrant morphing accents */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 262 73% 63%;
+    --primary-foreground: 0 0% 100%;
+
+    --gradient-start: 262 73% 63%;
+    --gradient-end: 325 85% 65%;
+    
+    --accent-gradient-start: 195 100% 49%;
+    --accent-gradient-end: 172 100% 48%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 325 85% 65%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 262 73% 63%;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 8px 0 rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 4px 16px 0 rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Morphing shape color utilities */
+  .bg-morph-purple { background-color: hsl(var(--morph-purple)); }
+  .bg-morph-pink { background-color: hsl(var(--morph-pink)); }
+  .bg-morph-yellow { background-color: hsl(var(--morph-yellow)); }
+  .bg-morph-cyan { background-color: hsl(var(--morph-cyan)); }
+  .bg-morph-teal { background-color: hsl(var(--morph-teal)); }
+  .bg-morph-blue-gray { background-color: hsl(var(--morph-blue-gray)); }
+  
+  /* Morphing animations */
+  .animate-morph {
+    animation: morph 3s ease-in-out infinite;
+  }
+  
+  @keyframes morph {
+    0%, 100% { border-radius: 2rem; }
+    25% { border-radius: 0.5rem; }
+    50% { border-radius: 50%; }
+    75% { border-radius: 1rem; }
+  }
+  
+  .animate-morph-slow {
+    animation: morph-slow 6s ease-in-out infinite;
+  }
+  
+  @keyframes morph-slow {
+    0%, 100% { border-radius: 1.5rem; transform: scale(1); }
+    33% { border-radius: 0.75rem; transform: scale(1.05); }
+    66% { border-radius: 2.5rem; transform: scale(0.95); }
+  }
+}

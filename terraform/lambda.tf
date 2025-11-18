@@ -1,20 +1,37 @@
-# Archive Lambda function code
+# Install Lambda dependencies
+resource "null_resource" "lambda_dependencies" {
+  triggers = {
+    package_json = filemd5("${path.module}/../lambda/package.json")
+  }
+
+  provisioner "local-exec" {
+    command = "cd ${path.module}/../lambda && npm install --production"
+  }
+}
+
+# Archive Lambda function code with dependencies
 data "archive_file" "on_connect_zip" {
+  depends_on  = [null_resource.lambda_dependencies]
   type        = "zip"
-  source_file = "${path.module}/../lambda/onConnect.js"
-  output_path = "${path.module}/.terraform/onConnect.zip"
+  source_dir  = "${path.module}/../lambda"
+  output_path = "${path.module}/lambda_packages/onConnect.zip"
+  excludes    = ["onDisconnect.js", "sendMessage.js", "package.json", "package-lock.json"]
 }
 
 data "archive_file" "on_disconnect_zip" {
+  depends_on  = [null_resource.lambda_dependencies]
   type        = "zip"
-  source_file = "${path.module}/../lambda/onDisconnect.js"
-  output_path = "${path.module}/.terraform/onDisconnect.zip"
+  source_dir  = "${path.module}/../lambda"
+  output_path = "${path.module}/lambda_packages/onDisconnect.zip"
+  excludes    = ["onConnect.js", "sendMessage.js", "package.json", "package-lock.json"]
 }
 
 data "archive_file" "send_message_zip" {
+  depends_on  = [null_resource.lambda_dependencies]
   type        = "zip"
-  source_file = "${path.module}/../lambda/sendMessage.js"
-  output_path = "${path.module}/.terraform/sendMessage.zip"
+  source_dir  = "${path.module}/../lambda"
+  output_path = "${path.module}/lambda_packages/sendMessage.zip"
+  excludes    = ["onConnect.js", "onDisconnect.js", "package.json", "package-lock.json"]
 }
 
 # onConnect Lambda Function
