@@ -33,6 +33,38 @@ node_modules/
 package-lock.json
 yarn.lock
 
+# Vite build outputs
+dist/
+dist-ssr/
+*.local
+
+# Next.js (if migrating from Next.js)
+.next/
+out/
+build/
+.next/
+next-env.d.ts
+
+# Frontend build artifacts
+frontend/.next/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/node_modules/
+frontend/package-lock.json
+
+# Old Next.js structure (migrated to Vite)
+frontend/app/
+frontend/components/
+frontend/hooks/
+frontend/lib/
+frontend/styles/
+frontend/.next/
+frontend/next-env.d.ts
+frontend/next.config.mjs
+frontend/next.config.js
+frontend/.next-env.d.ts
+
 # Environment variables
 .env
 .env.local
