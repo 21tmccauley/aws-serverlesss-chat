@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Moon, Sun, Send } from 'lucide-react'
+import { Moon, Sun, Send, Wifi, WifiOff, AlertCircle } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket'
+import { getUsername, setUsername, DEFAULT_USERNAME } from '../utils/username'
+import UsernameDialog from '../components/UsernameDialog'
 
 interface Message {
   id: string
@@ -12,31 +16,50 @@ interface Message {
 
 export default function ChatPage() {
   const [isDark, setIsDark] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      author: 'Alex',
-      content: 'Hey everyone! How is the project going?',
-      timestamp: new Date(Date.now() - 5 * 60000),
-      isOwn: false,
-    },
-    {
-      id: '2',
-      author: 'Jordan',
-      content: 'Really well! Just finished the design mockups.',
-      timestamp: new Date(Date.now() - 4 * 60000),
-      isOwn: false,
-    },
-    {
-      id: '3',
-      author: 'Casey',
-      content: 'Great! I started implementing the backend API.',
-      timestamp: new Date(Date.now() - 3 * 60000),
-      isOwn: false,
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
+  const [username, setUsernameState] = useState<string>(DEFAULT_USERNAME)
+  const [showUsernameDialog, setShowUsernameDialog] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // Get WebSocket URL from environment
+  const wsUrl = import.meta.env.VITE_WEBSOCKET_URL || ''
+
+  // Initialize username from localStorage or show dialog
+  useEffect(() => {
+    const storedUsername = getUsername()
+    if (storedUsername) {
+      setUsernameState(storedUsername)
+    } else {
+      setShowUsernameDialog(true)
+    }
+  }, [])
+  
+  // WebSocket hook
+  const {
+    status,
+    sendMessage: wsSendMessage,
+    lastMessage,
+    error: wsError,
+    reconnect,
+  } = useWebSocket({
+    url: wsUrl,
+    username: username,
+    onMessage: (message: WebSocketMessage) => {
+      const newMessage: Message = {
+        id: `${message.timestamp}-${message.username}-${Math.random()}`,
+        author: message.username,
+        content: message.message,
+        timestamp: new Date(message.timestamp),
+        isOwn: message.username === username,
+      }
+      setMessages((prev) => [...prev, newMessage])
+    },
+    onStatusChange: (newStatus) => {
+      console.log('WebSocket status changed:', newStatus)
+    },
+    enableLogging: true,
+  })
 
   useEffect(() => {
     const isDarkMode = document.documentElement.classList.contains('dark')
@@ -53,16 +76,15 @@ export default function ChatPage() {
     setIsDark(!isDark)
   }
 
+  const handleUsernameConfirm = (newUsername: string) => {
+    setUsername(newUsername)
+    setUsernameState(newUsername)
+    setShowUsernameDialog(false)
+  }
+
   const handleSendMessage = () => {
-    if (inputValue.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        author: 'You',
-        content: inputValue,
-        timestamp: new Date(),
-        isOwn: true,
-      }
-      setMessages([...messages, newMessage])
+    if (inputValue.trim() && status === 'connected') {
+      wsSendMessage(inputValue)
       setInputValue('')
     }
   }
@@ -74,8 +96,53 @@ export default function ChatPage() {
     }
   }
 
+  const getStatusColor = () => {
+    switch (status) {
+      case 'connected':
+        return 'text-green-500'
+      case 'connecting':
+        return 'text-yellow-500'
+      case 'error':
+        return 'text-red-500'
+      default:
+        return 'text-gray-500'
+    }
+  }
+
+  const getStatusText = () => {
+    switch (status) {
+      case 'connected':
+        return 'Connected'
+      case 'connecting':
+        return 'Connecting...'
+      case 'error':
+        return 'Error'
+      default:
+        return 'Disconnected'
+    }
+  }
+
+  const getStatusIcon = () => {
+    switch (status) {
+      case 'connected':
+        return <Wifi className="w-4 h-4" />
+      case 'error':
+        return <AlertCircle className="w-4 h-4" />
+      default:
+        return <WifiOff className="w-4 h-4" />
+    }
+  }
+
   return (
     <div className="h-screen bg-background text-foreground flex flex-col transition-theme">
+      {/* Username Dialog */}
+      <UsernameDialog
+        isOpen={showUsernameDialog}
+        onClose={() => setShowUsernameDialog(false)}
+        onConfirm={handleUsernameConfirm}
+        initialUsername={username}
+      />
+
       {/* Header */}
       <header className="border-b border-border p-4 flex items-center justify-between bg-card transition-theme">
         <div>
@@ -85,11 +152,36 @@ export default function ChatPage() {
             </div>
             <div>
               <h2 className="font-semibold">General Chat</h2>
-              <p className="text-xs text-muted-foreground">4 participants</p>
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-1 text-xs ${getStatusColor()}`}>
+                  {getStatusIcon()}
+                  <span>{getStatusText()}</span>
+                </div>
+                {wsError && (
+                  <span className="text-xs text-red-500" title={wsError}>
+                    ({wsError})
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowUsernameDialog(true)}
+            className="px-3 py-1.5 text-xs font-medium hover:bg-secondary rounded-lg transition-theme"
+            title="Change username"
+          >
+            {username}
+          </button>
+          {status === 'error' && (
+            <button
+              onClick={reconnect}
+              className="px-3 py-1.5 text-xs font-medium bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-theme"
+            >
+              Reconnect
+            </button>
+          )}
           <Link
             to="/"
             className="px-4 py-2 text-sm font-medium hover:bg-secondary rounded-lg transition-theme"
@@ -112,6 +204,20 @@ export default function ChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {messages.length === 0 && status === 'connected' && (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        )}
+        {messages.length === 0 && status !== 'connected' && (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>
+              {status === 'connecting' && 'Connecting...'}
+              {status === 'error' && `Connection error: ${wsError || 'Unknown error'}`}
+              {status === 'disconnected' && 'Disconnected. Waiting to reconnect...'}
+            </p>
+          </div>
+        )}
         {messages.map((message) => (
           <div
             key={message.id}
@@ -133,10 +239,7 @@ export default function ChatPage() {
               <p className={`text-xs mt-2 ${
                 message.isOwn ? 'opacity-70' : 'text-muted-foreground'
               }`}>
-                {message.timestamp.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {formatDistanceToNow(message.timestamp, { addSuffix: true })}
               </p>
             </div>
           </div>
@@ -152,12 +255,14 @@ export default function ChatPage() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
-            className="flex-1 bg-background border border-border rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-accent transition-theme text-foreground placeholder-muted-foreground"
+            placeholder={status === 'connected' ? 'Type a message...' : 'Connecting...'}
+            disabled={status !== 'connected'}
+            className="flex-1 bg-background border border-border rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-accent transition-theme text-foreground placeholder-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
             onClick={handleSendMessage}
-            className="px-4 py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-theme flex items-center gap-2"
+            disabled={status !== 'connected' || !inputValue.trim()}
+            className="px-4 py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-theme flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Send message"
           >
             <Send className="w-4 h-4" />
