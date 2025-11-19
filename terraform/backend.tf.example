@@ -1,0 +1,14 @@
+# Example backend configuration
+# Copy this to backend.tf and fill in your values
+# DO NOT commit backend.tf to git (it's in .gitignore)
+
+terraform {
+  backend "s3" {
+    bucket         = "your-terraform-state-bucket-name"
+    key            = "chat-app/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-lock"
+    encrypt        = true
+  }
+}
+

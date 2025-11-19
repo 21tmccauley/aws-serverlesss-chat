@@ -6,6 +6,7 @@ terraform.tfstate.backup
 *.tfvars
 *.tfvars.json
 *.tfplan
+terraform/backend.tf
 
 # Lambda zip files and packages
 *.zip

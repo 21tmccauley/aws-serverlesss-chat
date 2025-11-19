@@ -73,12 +73,23 @@ export function useWebSocket({
   const reconnectCountRef = useRef(0)
   const shouldReconnectRef = useRef(true)
   const logger = useRef(createLogger(enableLogging)).current
+  const statusRef = useRef<ConnectionStatus>('disconnected')
+  const onStatusChangeRef = useRef(onStatusChange)
+  const onMessageRef = useRef(onMessage)
+  
+  // Keep callback refs updated
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange
+    onMessageRef.current = onMessage
+  }, [onStatusChange, onMessage])
 
   const updateStatus = useCallback((newStatus: ConnectionStatus) => {
-    logger.log('STATUS_CHANGE', { from: status, to: newStatus })
+    const oldStatus = statusRef.current
+    logger.log('STATUS_CHANGE', { from: oldStatus, to: newStatus })
+    statusRef.current = newStatus
     setStatus(newStatus)
-    onStatusChange?.(newStatus)
-  }, [status, onStatusChange, logger])
+    onStatusChangeRef.current?.(newStatus)
+  }, [logger])
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -86,17 +97,28 @@ export function useWebSocket({
       return
     }
 
-    if (!url) {
+    if (!url || url.trim() === '') {
       logger.log('ERROR', 'No WebSocket URL provided')
-      setError('WebSocket URL is not configured')
+      setError('WebSocket URL is not configured. Please set VITE_WEBSOCKET_URL in your .env.local file.')
       updateStatus('error')
+      shouldReconnectRef.current = false // Don't reconnect if URL is missing
       return
     }
 
-    if (!username) {
+    if (!username || username.trim() === '') {
       logger.log('ERROR', 'No username provided')
       setError('Username is required')
       updateStatus('error')
+      shouldReconnectRef.current = false // Don't reconnect if username is missing
+      return
+    }
+
+    // Validate URL format
+    if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+      logger.log('ERROR', 'Invalid WebSocket URL format')
+      setError('Invalid WebSocket URL. Must start with ws:// or wss://')
+      updateStatus('error')
+      shouldReconnectRef.current = false
       return
     }
 
@@ -122,7 +144,7 @@ export function useWebSocket({
           const data: WebSocketMessage = JSON.parse(event.data)
           logger.log('MESSAGE_RECEIVED', data)
           setLastMessage(data)
-          onMessage?.(data)
+          onMessageRef.current?.(data)
         } catch (err) {
           logger.log('PARSE_ERROR', { error: err, rawData: event.data })
           console.error('Failed to parse WebSocket message:', err)
@@ -172,7 +194,7 @@ export function useWebSocket({
       setError(errorMsg)
       updateStatus('error')
     }
-  }, [url, username, reconnectAttempts, reconnectInterval, updateStatus, onMessage, logger])
+  }, [url, username, reconnectAttempts, reconnectInterval, updateStatus, logger])
 
   const sendMessage = useCallback((message: string) => {
     if (!message.trim()) {
@@ -239,18 +261,53 @@ export function useWebSocket({
 
   // Connect on mount and when URL/username changes
   useEffect(() => {
-    if (url && username) {
+    // Only attempt connection if we have valid URL and username
+    if (url && url.trim() !== '' && username && username.trim() !== '') {
+      // Reset reconnection state when URL/username changes
       shouldReconnectRef.current = true
-      connect()
+      reconnectCountRef.current = 0
+      
+      // Clear any pending reconnection
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+      
+      // Close existing connection if any
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+      
+      // Small delay to ensure cleanup is complete
+      const timeoutId = setTimeout(() => {
+        connect()
+      }, 100)
+      
+      return () => {
+        clearTimeout(timeoutId)
+      }
+    } else {
+      // If URL or username is missing, set error state
+      if (!url || url.trim() === '') {
+        setError('WebSocket URL is not configured. Please set VITE_WEBSOCKET_URL in your .env.local file.')
+        updateStatus('error')
+      } else if (!username || username.trim() === '') {
+        setError('Username is required')
+        updateStatus('error')
+      }
+      shouldReconnectRef.current = false
     }
 
     return () => {
       shouldReconnectRef.current = false
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
       }
       if (wsRef.current) {
         wsRef.current.close()
+        wsRef.current = null
       }
     }
   }, [url, username, connect])

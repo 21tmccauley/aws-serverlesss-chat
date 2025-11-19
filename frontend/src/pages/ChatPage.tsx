@@ -210,12 +210,27 @@ export default function ChatPage() {
           </div>
         )}
         {messages.length === 0 && status !== 'connected' && (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <p>
-              {status === 'connecting' && 'Connecting...'}
-              {status === 'error' && `Connection error: ${wsError || 'Unknown error'}`}
-              {status === 'disconnected' && 'Disconnected. Waiting to reconnect...'}
-            </p>
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 px-4">
+            <div className="text-center">
+              {status === 'connecting' && <p>Connecting...</p>}
+              {status === 'error' && (
+                <div className="space-y-2">
+                  <p className="text-red-500 font-semibold">Connection Error</p>
+                  <p className="text-sm">{wsError || 'Unknown error'}</p>
+                  {wsError?.includes('VITE_WEBSOCKET_URL') && (
+                    <div className="mt-4 p-4 bg-card border border-border rounded-lg text-left max-w-md">
+                      <p className="text-xs font-semibold mb-2">To fix this:</p>
+                      <ol className="text-xs list-decimal list-inside space-y-1">
+                        <li>Create a <code className="bg-background px-1 rounded">.env.local</code> file in the <code className="bg-background px-1 rounded">frontend</code> directory</li>
+                        <li>Add: <code className="bg-background px-1 rounded">VITE_WEBSOCKET_URL=wss://your-api-id.execute-api.us-east-1.amazonaws.com/dev</code></li>
+                        <li>See <code className="bg-background px-1 rounded">GET_WEBSOCKET_URL.md</code> for instructions</li>
+                      </ol>
+                    </div>
+                  )}
+                </div>
+              )}
+              {status === 'disconnected' && <p>Disconnected. Waiting to reconnect...</p>}
+            </div>
           </div>
         )}
         {messages.map((message) => (
