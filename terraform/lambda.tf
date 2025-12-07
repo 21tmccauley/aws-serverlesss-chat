@@ -42,6 +42,8 @@ resource "aws_lambda_function" "on_connect" {
   handler          = "onConnect.handler"
   source_code_hash = data.archive_file.on_connect_zip.output_base64sha256
   runtime          = "nodejs20.x"
+  timeout          = 10
+  memory_size      = 256
 
   environment {
     variables = {
@@ -63,6 +65,8 @@ resource "aws_lambda_function" "on_disconnect" {
   handler          = "onDisconnect.handler"
   source_code_hash = data.archive_file.on_disconnect_zip.output_base64sha256
   runtime          = "nodejs20.x"
+  timeout          = 10
+  memory_size      = 256
 
   environment {
     variables = {
@@ -84,6 +88,8 @@ resource "aws_lambda_function" "send_message" {
   handler          = "sendMessage.handler"
   source_code_hash = data.archive_file.send_message_zip.output_base64sha256
   runtime          = "nodejs20.x"
+  timeout          = 30
+  memory_size      = 512
 
   environment {
     variables = {

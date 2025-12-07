@@ -2,67 +2,140 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 
+// Reuse clients across invocations (Lambda container reuse)
 const dynamoClient = new DynamoDBClient({});
 const dynamodb = DynamoDBDocumentClient.from(dynamoClient);
 
-exports.handler = async (event) => {
-  const connectionId = event.requestContext.connectionId;
-  const body = JSON.parse(event.body);
-  const message = body.message;
-  const username = body.username || 'Anonymous';
-  const connectionsTable = process.env.CONNECTIONS_TABLE;
-  const messagesTable = process.env.MESSAGES_TABLE;
+// Helper to get API Gateway client (endpoint may vary per request)
+const getApiGatewayClient = (event) => {
+  const domainName = event.requestContext?.domainName;
+  const stage = event.requestContext?.stage;
   
-  // Get the API Gateway endpoint URL
-  const domainName = event.requestContext.domainName;
-  const stage = event.requestContext.stage;
-  const apiGatewayEndpoint = `https://${domainName}/${stage}`;
+  if (!domainName || !stage) {
+    throw new Error('Missing domainName or stage in request context');
+  }
   
-  const apiGatewayClient = new ApiGatewayManagementApiClient({
-    endpoint: apiGatewayEndpoint
+  return new ApiGatewayManagementApiClient({
+    endpoint: `https://${domainName}/${stage}`
   });
-  
-  // Save message to DynamoDB
-  const messageId = Date.now().toString();
-  await dynamodb.send(new PutCommand({
-    TableName: messagesTable,
-    Item: {
-      messageId: messageId,
-      timestamp: new Date().toISOString(),
-      username: username,
-      message: message
-    }
-  }));
-  
-  // Get all active connections
-  const connectionsResult = await dynamodb.send(new ScanCommand({
-    TableName: connectionsTable
-  }));
-  
-  // Broadcast message to all connections
-  const broadcastPromises = connectionsResult.Items.map(async (connection) => {
-    try {
-      await apiGatewayClient.send(new PostToConnectionCommand({
-        ConnectionId: connection.connectionId,
-        Data: JSON.stringify({
-          username: username,
-          message: message,
-          timestamp: new Date().toISOString()
-        })
-      }));
-    } catch (err) {
-      // If connection no longer exists (410 error), remove it from table
-      if (err.statusCode === 410) {
-        await dynamodb.send(new DeleteCommand({
-          TableName: connectionsTable,
-          Key: { connectionId: connection.connectionId }
-        }));
-      }
-    }
-  });
-  
-  await Promise.all(broadcastPromises);
-  
-  return { statusCode: 200, body: 'Message sent' };
 };
 
+// Helper to broadcast message to all connections
+const broadcastMessage = async (apiGatewayClient, connectionsTable, messageData) => {
+  try {
+    // Get all active connections
+    const result = await dynamodb.send(new ScanCommand({
+      TableName: connectionsTable
+    }));
+
+    if (!result.Items || result.Items.length === 0) {
+      console.log('No active connections to broadcast to');
+      return;
+    }
+
+    // Broadcast to all connections
+    const broadcastPromises = result.Items.map(async (connection) => {
+      try {
+        await apiGatewayClient.send(new PostToConnectionCommand({
+          ConnectionId: connection.connectionId,
+          Data: JSON.stringify(messageData)
+        }));
+      } catch (error) {
+        // Remove stale connections (410 = Gone)
+        if (error.statusCode === 410 || error.name === 'GoneException') {
+          console.log(`Removing stale connection: ${connection.connectionId}`);
+          try {
+            await dynamodb.send(new DeleteCommand({
+              TableName: connectionsTable,
+              Key: { connectionId: connection.connectionId }
+            }));
+          } catch (deleteError) {
+            console.error(`Failed to delete stale connection ${connection.connectionId}:`, deleteError);
+          }
+        } else {
+          console.error(`Error broadcasting to ${connection.connectionId}:`, error);
+        }
+      }
+    });
+
+    await Promise.all(broadcastPromises);
+    console.log(`Broadcasted message to ${result.Items.length} connection(s)`);
+  } catch (error) {
+    console.error('Error in broadcastMessage:', error);
+    throw error;
+  }
+};
+
+exports.handler = async (event) => {
+  try {
+    const connectionId = event.requestContext?.connectionId;
+    const connectionsTable = process.env.CONNECTIONS_TABLE;
+    const messagesTable = process.env.MESSAGES_TABLE;
+
+    // Validate required data
+    if (!connectionId) {
+      console.error('Missing connectionId in request context');
+      return { statusCode: 400, body: JSON.stringify({ error: 'Missing connectionId' }) };
+    }
+
+    if (!connectionsTable || !messagesTable) {
+      console.error('Environment variables not set');
+      return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error' }) };
+    }
+
+    // Parse message body
+    let body;
+    try {
+      body = event.body ? JSON.parse(event.body) : {};
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid message format' }) };
+    }
+
+    const message = body.message?.trim();
+    const username = body.username?.trim() || 'Anonymous';
+
+    // Validate message
+    if (!message || message.length === 0) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Message cannot be empty' }) };
+    }
+
+    if (message.length > 1000) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Message too long (max 1000 characters)' }) };
+    }
+
+    // Prepare message data
+    const timestamp = new Date().toISOString();
+    const messageData = {
+      username: username,
+      message: message,
+      timestamp: timestamp
+    };
+
+    // Save message to DynamoDB
+    const messageId = `${Date.now()}-${connectionId}`;
+    await dynamodb.send(new PutCommand({
+      TableName: messagesTable,
+      Item: {
+        messageId: messageId,
+        timestamp: timestamp,
+        username: username,
+        message: message
+      }
+    }));
+
+    console.log(`Message saved: ${messageId} from ${username}`);
+
+    // Broadcast to all connections
+    const apiGatewayClient = getApiGatewayClient(event);
+    await broadcastMessage(apiGatewayClient, connectionsTable, messageData);
+
+    return { statusCode: 200, body: JSON.stringify({ message: 'Message sent' }) };
+  } catch (error) {
+    console.error('Error in sendMessage:', error);
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ error: 'Failed to send message' }) 
+    };
+  }
+};

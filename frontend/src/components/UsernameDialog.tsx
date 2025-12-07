@@ -73,6 +73,10 @@ export default function UsernameDialog({
               }}
               placeholder="Enter your username"
               className="w-full bg-background border border-border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-accent transition-theme text-foreground placeholder-muted-foreground"
+              autoComplete="off"
+              data-lpignore="true"
+              data-form-type="other"
+              data-1p-ignore="true"
               autoFocus
               maxLength={20}
             />

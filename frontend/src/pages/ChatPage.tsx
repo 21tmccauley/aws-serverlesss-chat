@@ -272,6 +272,10 @@ export default function ChatPage() {
             onKeyPress={handleKeyPress}
             placeholder={status === 'connected' ? 'Type a message...' : 'Connecting...'}
             disabled={status !== 'connected'}
+            autoComplete="off"
+            data-lpignore="true"
+            data-form-type="other"
+            data-1p-ignore="true"
             className="flex-1 bg-background border border-border rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-accent transition-theme text-foreground placeholder-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
