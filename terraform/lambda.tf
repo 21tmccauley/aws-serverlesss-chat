@@ -15,7 +15,7 @@ data "archive_file" "on_connect_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda"
   output_path = "${path.module}/lambda_packages/onConnect.zip"
-  excludes    = ["onDisconnect.js", "sendMessage.js", "package.json", "package-lock.json"]
+  excludes    = ["onDisconnect.js", "sendMessage.js", "authorizer.js", "package.json", "package-lock.json"]
 }
 
 data "archive_file" "on_disconnect_zip" {
@@ -23,7 +23,7 @@ data "archive_file" "on_disconnect_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda"
   output_path = "${path.module}/lambda_packages/onDisconnect.zip"
-  excludes    = ["onConnect.js", "sendMessage.js", "package.json", "package-lock.json"]
+  excludes    = ["onConnect.js", "sendMessage.js", "authorizer.js", "package.json", "package-lock.json"]
 }
 
 data "archive_file" "send_message_zip" {
@@ -31,7 +31,15 @@ data "archive_file" "send_message_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda"
   output_path = "${path.module}/lambda_packages/sendMessage.zip"
-  excludes    = ["onConnect.js", "onDisconnect.js", "package.json", "package-lock.json"]
+  excludes    = ["onConnect.js", "onDisconnect.js", "authorizer.js", "package.json", "package-lock.json"]
+}
+
+data "archive_file" "authorizer_zip" {
+  depends_on  = [null_resource.lambda_dependencies]
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda"
+  output_path = "${path.module}/lambda_packages/authorizer.zip"
+  excludes    = ["onConnect.js", "onDisconnect.js", "sendMessage.js", "package.json", "package-lock.json"]
 }
 
 # onConnect Lambda Function
@@ -100,6 +108,23 @@ resource "aws_lambda_function" "send_message" {
 
   tags = {
     Name        = "${var.project_name}-sendMessage"
+    Environment = var.stage_name
+  }
+}
+
+# Authorizer Lambda Function
+resource "aws_lambda_function" "authorizer" {
+  filename         = data.archive_file.authorizer_zip.output_path
+  function_name    = "${var.project_name}-authorizer-${var.stage_name}"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "authorizer.handler"
+  source_code_hash = data.archive_file.authorizer_zip.output_base64sha256
+  runtime          = "nodejs20.x"
+  timeout          = 5
+  memory_size      = 128
+
+  tags = {
+    Name        = "${var.project_name}-authorizer"
     Environment = var.stage_name
   }
 }

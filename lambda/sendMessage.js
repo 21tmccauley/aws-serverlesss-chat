@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 
 // Reuse clients across invocations (Lambda container reuse)
@@ -93,7 +93,6 @@ exports.handler = async (event) => {
     }
 
     const message = body.message?.trim();
-    const username = body.username?.trim() || 'Anonymous';
 
     // Validate message
     if (!message || message.length === 0) {
@@ -102,6 +101,24 @@ exports.handler = async (event) => {
 
     if (message.length > 1000) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Message too long (max 1000 characters)' }) };
+    }
+
+    // Get username from connections table (authoritative source - don't trust client)
+    let username = 'Anonymous';
+    try {
+      const connectionResult = await dynamodb.send(new GetCommand({
+        TableName: connectionsTable,
+        Key: { connectionId: connectionId }
+      }));
+      
+      if (connectionResult.Item && connectionResult.Item.username) {
+        username = connectionResult.Item.username;
+      } else {
+        console.warn(`Connection ${connectionId} not found in connections table, using Anonymous`);
+      }
+    } catch (error) {
+      console.error(`Error fetching connection ${connectionId}:`, error);
+      // Continue with Anonymous if we can't fetch the connection
     }
 
     // Prepare message data

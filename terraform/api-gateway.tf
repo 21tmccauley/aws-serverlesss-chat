@@ -43,11 +43,31 @@ resource "aws_apigatewayv2_integration" "send_message_integration" {
   integration_uri  = aws_lambda_function.send_message.invoke_arn
 }
 
-# $connect Route
+# Authorizer for $connect route
+resource "aws_apigatewayv2_authorizer" "websocket_authorizer" {
+  api_id           = aws_apigatewayv2_api.websocket_api.id
+  authorizer_type  = "REQUEST"
+  authorizer_uri   = aws_lambda_function.authorizer.invoke_arn
+  identity_sources = ["route.request.querystring.username"]
+  name             = "${var.project_name}-websocket-authorizer"
+}
+
+# Permission for API Gateway to invoke authorizer
+resource "aws_lambda_permission" "authorizer_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.authorizer.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.websocket_api.execution_arn}/authorizers/*"
+}
+
+# $connect Route with authorizer
 resource "aws_apigatewayv2_route" "connect_route" {
-  api_id    = aws_apigatewayv2_api.websocket_api.id
-  route_key = "$connect"
-  target    = "integrations/${aws_apigatewayv2_integration.on_connect_integration.id}"
+  api_id             = aws_apigatewayv2_api.websocket_api.id
+  route_key          = "$connect"
+  target             = "integrations/${aws_apigatewayv2_integration.on_connect_integration.id}"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.websocket_authorizer.id
 }
 
 # $disconnect Route

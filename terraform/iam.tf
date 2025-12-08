@@ -54,7 +54,7 @@ resource "aws_iam_role_policy" "lambda_custom_permissions" {
         Action = [
           "execute-api:ManageConnections"
         ]
-        Resource = "arn:aws:execute-api:*:*:*/*"
+        Resource = "${aws_apigatewayv2_api.websocket_api.execution_arn}/*/*"
       }
     ]
   })

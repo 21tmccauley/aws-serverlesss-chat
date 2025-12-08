@@ -61,7 +61,7 @@ export default function LandingPage() {
                 Start Chatting
               </Link>
               <Link
-                to="/architecture"
+                to="/learn-more"
                 className="px-8 py-4 border-2 border-accent text-accent rounded-lg font-semibold hover:bg-accent hover:text-accent-foreground transition-theme text-lg"
               >
                 Learn More

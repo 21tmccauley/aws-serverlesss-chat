@@ -20,7 +20,7 @@ echo ""
 if aws s3 ls "s3://$BUCKET_NAME" 2>/dev/null; then
     echo "⚠️  Bucket $BUCKET_NAME already exists"
 else
-    echo "📦 Creating S3 bucket: $BUCKET_NAME"
+    echo "Creating S3 bucket: $BUCKET_NAME"
     if [ "$REGION" == "us-east-1" ]; then
         # us-east-1 doesn't need LocationConstraint
         aws s3api create-bucket --bucket "$BUCKET_NAME" --region "$REGION"
@@ -32,13 +32,13 @@ else
     fi
     
     # Enable versioning
-    echo "📝 Enabling versioning on bucket"
+    echo "Enabling versioning on bucket"
     aws s3api put-bucket-versioning \
         --bucket "$BUCKET_NAME" \
         --versioning-configuration Status=Enabled
     
     # Enable encryption
-    echo "🔒 Enabling encryption on bucket"
+    echo "Enabling encryption on bucket"
     aws s3api put-bucket-encryption \
         --bucket "$BUCKET_NAME" \
         --server-side-encryption-configuration '{
@@ -50,7 +50,7 @@ else
         }'
     
     # Block public access
-    echo "🔐 Blocking public access"
+    echo "Blocking public access"
     aws s3api put-public-access-block \
         --bucket "$BUCKET_NAME" \
         --public-access-block-configuration \
@@ -59,7 +59,7 @@ fi
 
 # Check if DynamoDB table already exists
 if aws dynamodb describe-table --table-name "$DYNAMODB_TABLE" --region "$REGION" 2>/dev/null; then
-    echo "⚠️  DynamoDB table $DYNAMODB_TABLE already exists"
+    echo "DynamoDB table $DYNAMODB_TABLE already exists"
 else
     echo "🗄️  Creating DynamoDB table: $DYNAMODB_TABLE"
     aws dynamodb create-table \
@@ -76,7 +76,7 @@ fi
 echo ""
 echo "✅ Bootstrap complete!"
 echo ""
-echo "📋 Next steps:"
+echo "Next steps:"
 echo "1. Create backend.tf with these values:"
 echo "   bucket         = \"$BUCKET_NAME\""
 echo "   key            = \"chat-app/terraform.tfstate\""

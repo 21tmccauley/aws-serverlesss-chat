@@ -9,6 +9,11 @@ resource "aws_dynamodb_table" "connections" {
     type = "S"
   }
 
+  # Enable encryption at rest using AWS managed keys
+  server_side_encryption {
+    enabled = true
+  }
+
   tags = {
     Name        = "${var.project_name}-connections"
     Environment = var.stage_name
@@ -30,6 +35,11 @@ resource "aws_dynamodb_table" "messages" {
   attribute {
     name = "timestamp"
     type = "S"
+  }
+
+  # Enable encryption at rest using AWS managed keys
+  server_side_encryption {
+    enabled = true
   }
 
   tags = {
