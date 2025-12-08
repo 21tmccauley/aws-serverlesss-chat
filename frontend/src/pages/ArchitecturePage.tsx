@@ -226,7 +226,7 @@ flowchart TD
                     <h3 className="text-xl font-semibold">Frontend</h3>
                   </div>
                   <p className="text-muted-foreground text-sm mb-3">
-                    React + TypeScript application that establishes WebSocket connections to API Gateway for real-time communication.
+                    React + TypeScript application that establishes WebSocket connections to API Gateway with username as query parameter for real-time communication.
                   </p>
                   <div className="bg-background rounded-lg p-3 text-xs text-muted-foreground">
                     <p className="font-semibold mb-1">Technologies:</p>
@@ -240,11 +240,11 @@ flowchart TD
                     <h3 className="text-xl font-semibold">API Gateway</h3>
                   </div>
                   <p className="text-muted-foreground text-sm mb-3">
-                    Manages persistent WebSocket connections and routes messages to Lambda functions.
+                    Manages persistent WebSocket connections and routes messages to Lambda functions. Uses route selection expression based on request body action field.
                   </p>
                   <div className="bg-background rounded-lg p-3 text-xs text-muted-foreground">
                     <p className="font-semibold mb-1">Routes:</p>
-                    <p>$connect • $disconnect • sendMessage</p>
+                    <p>$connect • $disconnect • sendMessage (via $request.body.action)</p>
                   </div>
                 </div>
 
@@ -254,11 +254,11 @@ flowchart TD
                     <h3 className="text-xl font-semibold">Lambda Functions</h3>
                   </div>
                   <p className="text-muted-foreground text-sm mb-3">
-                    Three serverless functions handle connection management and message broadcasting.
+                    Three serverless functions handle connection management and message broadcasting using API Gateway Management API.
                   </p>
                   <div className="bg-background rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-                    <p><span className="font-semibold">onConnect:</span> Store connection</p>
-                    <p><span className="font-semibold">sendMessage:</span> Save & broadcast</p>
+                    <p><span className="font-semibold">onConnect:</span> Store connection (username from query params)</p>
+                    <p><span className="font-semibold">sendMessage:</span> Save & broadcast via PostToConnection</p>
                     <p><span className="font-semibold">onDisconnect:</span> Remove connection</p>
                   </div>
                 </div>
@@ -272,8 +272,8 @@ flowchart TD
                     Two tables store connections and message history with pay-per-request pricing.
                   </p>
                   <div className="bg-background rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-                    <p><span className="font-semibold">Connections:</span> connectionId (PK)</p>
-                    <p><span className="font-semibold">Messages:</span> messageId (PK), timestamp (SK)</p>
+                    <p><span className="font-semibold">Connections:</span> connectionId (PK), username, connectedAt</p>
+                    <p><span className="font-semibold">Messages:</span> messageId (PK: timestamp-connectionId), timestamp (range key), username, message</p>
                   </div>
                 </div>
               </div>
@@ -300,29 +300,33 @@ sequenceDiagram
     participant Users as 👥 All Users
     
     Note over User,API: 1. User Connects
-    User->>API: WebSocket Connection<br/>($connect)
-    API->>Connect: Trigger onConnect
+    User->>API: WebSocket Connection<br/>($connect?username=...)
+    API->>Connect: Trigger onConnect<br/>(username from query params)
     Connect->>DB1: Store connectionId<br/>& username
     DB1-->>Connect: Success
     Connect-->>API: Connection stored
     API-->>User: Connection established
     
     Note over User,Users: 2. User Sends Message
-    User->>API: Send message<br/>(sendMessage route)
-    API->>SendMsg: Trigger sendMessage
+    User->>API: Send message<br/>(action: "sendMessage")
+    API->>SendMsg: Trigger sendMessage<br/>(via route selection)
     
     Note over SendMsg,DB2: 3. Save Message
-    SendMsg->>DB2: Save message<br/>(messageId, timestamp,<br/>username, message)
+    SendMsg->>DB2: Save message<br/>(messageId: timestamp-connectionId,<br/>timestamp, username, message)
     DB2-->>SendMsg: Message saved
     
     Note over SendMsg,DB1: 4. Get All Connections
-    SendMsg->>DB1: Scan all connections
+    SendMsg->>DB1: Scan all connections<br/>(full table scan)
     DB1-->>SendMsg: Return connectionIds
     
     Note over SendMsg,Users: 5. Broadcast to All Users
     loop For each connection
-        SendMsg->>API: PostToConnection<br/>(connectionId, message)
-        API->>Users: Broadcast message<br/>via WebSocket
+        SendMsg->>API: PostToConnection<br/>(via Management API)
+        alt Connection active
+            API->>Users: Broadcast message<br/>via WebSocket
+        else Stale connection (410)
+            SendMsg->>DB1: Remove stale connection
+        end
     end
     
     Note over Users: 6. All Users Receive
@@ -334,12 +338,12 @@ sequenceDiagram
               {/* Flow Steps */}
               <div className="grid md:grid-cols-2 gap-4">
                 {[
-                  { num: 1, title: 'User Connects', desc: 'Frontend establishes WebSocket connection to API Gateway, triggering onConnect Lambda.' },
-                  { num: 2, title: 'Store Connection', desc: 'onConnect Lambda stores connection ID and username in Connections DynamoDB table.' },
-                  { num: 3, title: 'User Sends Message', desc: 'Frontend sends message via WebSocket, routed to sendMessage Lambda function.' },
-                  { num: 4, title: 'Save & Broadcast', desc: 'sendMessage Lambda saves message to Messages table, retrieves all connections, and broadcasts to all users.' },
-                  { num: 5, title: 'Real-Time Delivery', desc: 'All connected users receive the message instantly via their WebSocket connections.' },
-                  { num: 6, title: 'User Disconnects', desc: 'onDisconnect Lambda removes connection ID from DynamoDB when user closes connection.' },
+                  { num: 1, title: 'User Connects', desc: 'Frontend establishes WebSocket connection with username as query parameter (wss://url?username=...), triggering onConnect Lambda.' },
+                  { num: 2, title: 'Store Connection', desc: 'onConnect Lambda extracts username from query parameters and stores connection ID and username in Connections DynamoDB table.' },
+                  { num: 3, title: 'User Sends Message', desc: 'Frontend sends message with action field ({ action: "sendMessage", ... }) via WebSocket. API Gateway routes to sendMessage Lambda using route selection expression.' },
+                  { num: 4, title: 'Save & Broadcast', desc: 'sendMessage Lambda generates messageId (timestamp-connectionId), saves to Messages table, scans Connections table for all active connections, then uses API Gateway Management API (PostToConnection) to broadcast to each connection. Automatically removes stale connections (410 errors) during broadcast.' },
+                  { num: 5, title: 'Real-Time Delivery', desc: 'All connected users receive the message instantly via their WebSocket connections through the API Gateway Management API.' },
+                  { num: 6, title: 'User Disconnects', desc: 'onDisconnect Lambda removes connection ID from DynamoDB when user closes WebSocket connection.' },
                 ].map((step) => (
                   <div key={step.num} className="bg-card border border-border rounded-xl p-5">
                     <div className="flex items-start gap-4">
@@ -379,7 +383,7 @@ sequenceDiagram
                     { file: 'iam.tf', desc: 'Creates IAM role for Lambda functions with DynamoDB and API Gateway permissions.' },
                     { file: 'lambda.tf', desc: 'Packages Lambda function code and creates Lambda functions with environment variables.' },
                     { file: 'api-gateway.tf', desc: 'Creates WebSocket API Gateway, defines routes, and integrates with Lambda functions.' },
-                    { file: 'outputs.tf', desc: 'Exports important values like the WebSocket URL for use in the frontend.' },
+                    { file: 'outputs.tf', desc: 'Exports WebSocket URLs (use stage_url output which includes stage name for frontend configuration).' },
                   ].map((item) => (
                     <div key={item.file} className="bg-background rounded-lg p-4">
                       <p className="font-semibold mb-2 text-sm">{item.file}</p>
@@ -397,7 +401,7 @@ flowchart LR
     Start([Start]) --> Init["1️⃣ terraform init<br/>Download providers<br/>& initialize backend"]
     Init --> Plan["2️⃣ terraform plan<br/>Preview changes<br/>& create execution plan"]
     Plan --> Apply["3️⃣ terraform apply<br/>Create/update resources<br/>in AWS"]
-    Apply --> Output["4️⃣ terraform output<br/>Get WebSocket URL<br/>& other outputs"]
+    Apply --> Output["4️⃣ terraform output<br/>Get WebSocket URL<br/>(use stage_url output)"]
     Output --> End([End])
     
     Apply --> Resources["📦 Resources Created:<br/>• API Gateway<br/>• Lambda Functions<br/>• DynamoDB Tables<br/>• IAM Roles"]
