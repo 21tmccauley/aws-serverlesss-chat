@@ -21,6 +21,7 @@ interface UseWebSocketOptions {
 interface UseWebSocketReturn {
   status: ConnectionStatus
   sendMessage: (message: string) => void
+  requestHistory: () => void
   lastMessage: WebSocketMessage | null
   error: string | null
   reconnect: () => void
@@ -137,14 +138,38 @@ export function useWebSocket({
         reconnectCountRef.current = 0
         updateStatus('connected')
         setError(null)
+        
+        // Request message history after connection is established
+        try {
+          const historyPayload = {
+            action: 'getHistory'
+          }
+          logger.log('REQUESTING_HISTORY', historyPayload)
+          ws.send(JSON.stringify(historyPayload))
+        } catch (err) {
+          logger.log('HISTORY_REQUEST_ERROR', { error: err })
+          console.error('Failed to request message history:', err)
+        }
       }
 
       ws.onmessage = (event) => {
         try {
-          const data: WebSocketMessage = JSON.parse(event.data)
+          const data: any = JSON.parse(event.data)
           logger.log('MESSAGE_RECEIVED', data)
-          setLastMessage(data)
-          onMessageRef.current?.(data)
+          
+          // Validate message has required fields (ignore error responses like "Forbidden")
+          if (data.timestamp && data.username && data.message) {
+            const message: WebSocketMessage = {
+              username: data.username,
+              message: data.message,
+              timestamp: data.timestamp
+            }
+            setLastMessage(message)
+            onMessageRef.current?.(message)
+          } else {
+            logger.log('INVALID_MESSAGE_FORMAT', { data, rawData: event.data })
+            console.warn('Received message with invalid format (possibly an error response):', data)
+          }
         } catch (err) {
           logger.log('PARSE_ERROR', { error: err, rawData: event.data })
           console.error('Failed to parse WebSocket message:', err)
@@ -227,6 +252,31 @@ export function useWebSocket({
       setError(errorMsg)
     }
   }, [username, logger])
+
+  const requestHistory = useCallback(() => {
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      logger.log('HISTORY_REQUEST_ERROR', { 
+        readyState: ws?.readyState, 
+        status: ws ? 'not open' : 'no connection' 
+      })
+      setError('WebSocket is not connected')
+      return
+    }
+
+    try {
+      const payload = {
+        action: 'getHistory'
+      }
+      logger.log('REQUESTING_HISTORY', payload)
+      ws.send(JSON.stringify(payload))
+      setError(null)
+    } catch (err) {
+      logger.log('HISTORY_REQUEST_ERROR', { error: err })
+      const errorMsg = err instanceof Error ? err.message : 'Failed to request history'
+      setError(errorMsg)
+    }
+  }, [logger])
 
   const disconnect = useCallback(() => {
     logger.log('MANUAL_DISCONNECT')
@@ -315,6 +365,7 @@ export function useWebSocket({
   return {
     status,
     sendMessage,
+    requestHistory,
     lastMessage,
     error,
     reconnect,

@@ -84,6 +84,13 @@ resource "aws_apigatewayv2_route" "send_message_route" {
   target    = "integrations/${aws_apigatewayv2_integration.send_message_integration.id}"
 }
 
+# getHistory Route (also handled by sendMessage Lambda)
+resource "aws_apigatewayv2_route" "get_history_route" {
+  api_id    = aws_apigatewayv2_api.websocket_api.id
+  route_key = "getHistory"
+  target    = "integrations/${aws_apigatewayv2_integration.send_message_integration.id}"
+}
+
 # Permission for API Gateway to invoke onConnect
 resource "aws_lambda_permission" "on_connect_permission" {
   statement_id  = "AllowExecutionFromAPIGateway"

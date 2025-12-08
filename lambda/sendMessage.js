@@ -20,6 +20,34 @@ const getApiGatewayClient = (event) => {
   });
 };
 
+// Fetch recent messages from DynamoDB (simple scan approach for demo)
+const fetchRecentMessages = async (messagesTable, limit = 50) => {
+  try {
+    const result = await dynamodb.send(new ScanCommand({
+      TableName: messagesTable,
+      Limit: limit * 2 // Get more than needed to account for filtering
+    }));
+
+    if (!result.Items || result.Items.length === 0) {
+      return [];
+    }
+
+    // Sort by timestamp descending and limit results
+    const sortedMessages = result.Items
+      .sort((a, b) => {
+        // Sort by timestamp descending (most recent first)
+        return new Date(b.timestamp) - new Date(a.timestamp);
+      })
+      .slice(0, limit)
+      .reverse(); // Reverse to send oldest first (chronological order)
+
+    return sortedMessages;
+  } catch (error) {
+    console.error('Error fetching recent messages:', error);
+    return []; // Return empty array on error
+  }
+};
+
 // Helper to broadcast message to all connections
 const broadcastMessage = async (apiGatewayClient, connectionsTable, messageData) => {
   try {
@@ -92,6 +120,43 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Invalid message format' }) };
     }
 
+    // Handle getHistory action
+    if (body.action === 'getHistory') {
+      try {
+        console.log(`Fetching message history for connection: ${connectionId}`);
+        const recentMessages = await fetchRecentMessages(messagesTable, 50);
+        
+        const apiGatewayClient = getApiGatewayClient(event);
+        
+        // Send each message to the requesting connection
+        for (const msg of recentMessages) {
+          try {
+            await apiGatewayClient.send(new PostToConnectionCommand({
+              ConnectionId: connectionId,
+              Data: JSON.stringify({
+                username: msg.username,
+                message: msg.message,
+                timestamp: msg.timestamp
+              })
+            }));
+          } catch (sendError) {
+            console.warn(`Failed to send historical message to ${connectionId}:`, sendError.message || sendError);
+            // Continue sending other messages even if one fails
+          }
+        }
+        
+        console.log(`Sent ${recentMessages.length} recent messages to ${connectionId}`);
+        return { statusCode: 200, body: JSON.stringify({ message: 'History sent' }) };
+      } catch (error) {
+        console.error('Error sending message history:', error);
+        return { 
+          statusCode: 500, 
+          body: JSON.stringify({ error: 'Failed to fetch message history' }) 
+        };
+      }
+    }
+
+    // Handle regular sendMessage action
     const message = body.message?.trim();
 
     // Validate message

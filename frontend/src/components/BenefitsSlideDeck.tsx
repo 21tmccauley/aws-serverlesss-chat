@@ -35,7 +35,7 @@ const benefits: Benefit[] = [
     description: 'No servers to manage. Lambda functions scale automatically based on demand. Pay only for what you use.',
     items: [
       'Automatic scaling handles traffic spikes',
-      'No server patching or maintenance',
+      'No patch management or security updates needed',
       'Built-in high availability',
       'Zero cold starts for WebSocket connections'
     ],

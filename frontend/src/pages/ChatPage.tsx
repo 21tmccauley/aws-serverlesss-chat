@@ -46,11 +46,24 @@ export default function ChatPage() {
     url: wsUrl,
     username: username,
     onMessage: (message: WebSocketMessage) => {
+      // Validate message has required fields (ignore error responses like "Forbidden")
+      if (!message.timestamp || !message.username || !message.message) {
+        console.warn('Received invalid message format:', message)
+        return
+      }
+      
+      // Validate timestamp is a valid date
+      const messageDate = new Date(message.timestamp)
+      if (isNaN(messageDate.getTime())) {
+        console.warn('Received message with invalid timestamp:', message)
+        return
+      }
+      
       const newMessage: Message = {
         id: `${message.timestamp}-${message.username}-${Math.random()}`,
         author: message.username,
         content: message.message,
-        timestamp: new Date(message.timestamp),
+        timestamp: messageDate,
         isOwn: message.username === username,
       }
       setMessages((prev) => [...prev, newMessage])
@@ -69,6 +82,14 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Filter out any invalid messages that might have gotten into state
+  const validMessages = messages.filter(msg => 
+    msg.timestamp && 
+    !isNaN(msg.timestamp.getTime()) && 
+    msg.author && 
+    msg.content
+  )
 
   const toggleTheme = () => {
     const html = document.documentElement
@@ -204,12 +225,12 @@ export default function ChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {messages.length === 0 && status === 'connected' && (
+        {validMessages.length === 0 && status === 'connected' && (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <p>No messages yet. Start the conversation!</p>
           </div>
         )}
-        {messages.length === 0 && status !== 'connected' && (
+        {validMessages.length === 0 && status !== 'connected' && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 px-4">
             <div className="text-center">
               {status === 'connecting' && <p>Connecting...</p>}
@@ -233,7 +254,7 @@ export default function ChatPage() {
             </div>
           </div>
         )}
-        {messages.map((message) => (
+        {validMessages.map((message) => (
           <div
             key={message.id}
             className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
@@ -254,7 +275,9 @@ export default function ChatPage() {
               <p className={`text-xs mt-2 ${
                 message.isOwn ? 'opacity-70' : 'text-muted-foreground'
               }`}>
-                {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+                {message.timestamp && !isNaN(message.timestamp.getTime())
+                  ? formatDistanceToNow(message.timestamp, { addSuffix: true })
+                  : 'Just now'}
               </p>
             </div>
           </div>

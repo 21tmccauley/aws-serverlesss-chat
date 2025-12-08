@@ -639,7 +639,7 @@ type DiagramType = 'system' | 'message-flow' | 'connection-lifecycle' | 'key-ben
 
 export default function LearnMorePage() {
   const [isDark, setIsDark] = useState(false)
-  const [activeDiagram, setActiveDiagram] = useState<DiagramType>('system')
+  const [activeDiagram, setActiveDiagram] = useState<DiagramType>('key-benefits')
   
   const [systemNodes, setSystemNodes, onSystemNodesChange] = useNodesState(systemArchitectureNodes)
   const [systemEdges, setSystemEdges, onSystemEdgesChange] = useEdgesState(systemArchitectureEdges)
@@ -788,6 +788,16 @@ export default function LearnMorePage() {
         <div className="max-w-6xl mx-auto mb-6">
           <div className="flex gap-4 justify-center flex-wrap">
             <button
+              onClick={() => setActiveDiagram('key-benefits')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-theme ${
+                activeDiagram === 'key-benefits'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-card border border-border hover:bg-secondary'
+              }`}
+            >
+              Key Benefits
+            </button>
+            <button
               onClick={() => setActiveDiagram('system')}
               className={`px-6 py-3 rounded-lg font-semibold transition-theme ${
                 activeDiagram === 'system'
@@ -816,16 +826,6 @@ export default function LearnMorePage() {
               }`}
             >
               Connection Lifecycle
-            </button>
-            <button
-              onClick={() => setActiveDiagram('key-benefits')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-theme ${
-                activeDiagram === 'key-benefits'
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-card border border-border hover:bg-secondary'
-              }`}
-            >
-              Key Benefits
             </button>
           </div>
         </div>
