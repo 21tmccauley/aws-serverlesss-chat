@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand, ScanCommand, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, QueryCommand, ScanCommand, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 
 // Reuse clients across invocations (Lambda container reuse)
@@ -20,31 +20,57 @@ const getApiGatewayClient = (event) => {
   });
 };
 
-// Fetch recent messages from DynamoDB (simple scan approach for demo)
+// Fetch recent messages from DynamoDB using GSI sorted by timestamp
+// Uses QueryCommand with TimestampIndex GSI to efficiently retrieve most recent messages
 const fetchRecentMessages = async (messagesTable, limit = 50) => {
   try {
-    const result = await dynamodb.send(new ScanCommand({
+    // Query the TimestampIndex GSI
+    // GSI uses messageType='chat' as hash key and timestamp as sort key
+    // This allows efficient querying of all messages sorted by timestamp
+    const result = await dynamodb.send(new QueryCommand({
       TableName: messagesTable,
-      Limit: limit * 2 // Get more than needed to account for filtering
+      IndexName: 'TimestampIndex',
+      KeyConditionExpression: 'messageType = :messageType',
+      ExpressionAttributeValues: {
+        ':messageType': 'chat'
+      },
+      ScanIndexForward: false, // Sort descending (most recent first)
+      Limit: limit // DynamoDB will return up to limit items, already sorted
     }));
 
     if (!result.Items || result.Items.length === 0) {
       return [];
     }
 
-    // Sort by timestamp descending and limit results
-    const sortedMessages = result.Items
-      .sort((a, b) => {
-        // Sort by timestamp descending (most recent first)
-        return new Date(b.timestamp) - new Date(a.timestamp);
-      })
-      .slice(0, limit)
-      .reverse(); // Reverse to send oldest first (chronological order)
-
-    return sortedMessages;
+    // Items are already sorted descending by timestamp from the query
+    // Reverse to send oldest first (chronological order for display)
+    return result.Items.reverse();
   } catch (error) {
-    console.error('Error fetching recent messages:', error);
-    return []; // Return empty array on error
+    // If GSI doesn't exist yet or query fails, fall back to scanning all items
+    // This handles the case where the GSI hasn't been created yet or during migration
+    console.warn('GSI query failed, falling back to full scan:', error.message);
+    try {
+      const scanResult = await dynamodb.send(new ScanCommand({
+        TableName: messagesTable,
+      }));
+
+      if (!scanResult.Items || scanResult.Items.length === 0) {
+        return [];
+      }
+
+      // Sort by timestamp descending and limit results
+      const sortedMessages = scanResult.Items
+        .sort((a, b) => {
+          return new Date(b.timestamp) - new Date(a.timestamp);
+        })
+        .slice(0, limit)
+        .reverse();
+
+      return sortedMessages;
+    } catch (scanError) {
+      console.error('Error fetching recent messages (fallback scan also failed):', scanError);
+      return []; // Return empty array on error
+    }
   }
 };
 
@@ -202,7 +228,8 @@ exports.handler = async (event) => {
         messageId: messageId,
         timestamp: timestamp,
         username: username,
-        message: message
+        message: message,
+        messageType: 'chat' // Constant value for GSI partition key
       }
     }));
 

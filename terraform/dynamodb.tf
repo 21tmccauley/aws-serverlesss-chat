@@ -37,6 +37,20 @@ resource "aws_dynamodb_table" "messages" {
     type = "S"
   }
 
+  attribute {
+    name = "messageType"
+    type = "S"
+  }
+
+  # Global Secondary Index for querying by timestamp (for recent messages)
+  # Uses a constant partition key to enable efficient queries sorted by timestamp
+  global_secondary_index {
+    name            = "TimestampIndex"
+    hash_key        = "messageType"
+    range_key       = "timestamp"
+    projection_type = "ALL"
+  }
+
   # Enable encryption at rest using AWS managed keys
   server_side_encryption {
     enabled = true
