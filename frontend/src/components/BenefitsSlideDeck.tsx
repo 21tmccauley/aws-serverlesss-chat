@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Shield, Database, Zap, Network, Code } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Shield, Database, Zap, Network, Code, Target, CheckCircle2, Layers, FileText, Users } from 'lucide-react'
 
 interface Benefit {
   id: string
@@ -15,71 +15,46 @@ interface Benefit {
 
 const benefits: Benefit[] = [
   {
-    id: 'cost',
-    icon: Code,
-    title: 'Cost Effective',
-    description: 'All services use AWS Free Tier or pay-per-request pricing. Perfect for demos, prototypes, and small-scale applications.',
+    id: 'problem',
+    icon: Target,
+    title: 'The Challenge',
+    description: 'Build a real-time chat application that can scale effortlessly, keep costs low, and maintain enterprise-level security—all without managing servers.',
     items: [
-      'Free tier covers most development needs',
-      'Pay only for actual usage',
-      'No upfront costs or commitments',
-      'Scale costs with your application'
+      'Users need instant message delivery, not page refreshes',
+      'The solution must scale automatically as users join',
+      'Security can\'t be an afterthought—it\'s built in from day one',
+      'Messages need to persist so users can see conversation history',
+      'Infrastructure should be cost-effective and easy to maintain'
     ],
     borderColor: 'border-purple-500',
     iconColor: 'text-purple-500'
   },
   {
-    id: 'serverless',
-    icon: Zap,
-    title: 'Serverless Architecture',
-    description: 'No servers to manage. Lambda functions scale automatically based on demand. Pay only for what you use.',
+    id: 'solution',
+    icon: CheckCircle2,
+    title: 'Working Solution Achieved',
+    description: 'Fully functional real-time chat application deployed and operational on AWS serverless infrastructure.',
     items: [
-      'Automatic scaling handles traffic spikes',
-      'No patch management or security updates needed',
-      'Built-in high availability',
-      'Zero cold starts for WebSocket connections'
-    ],
-    borderColor: 'border-orange-500',
-    iconColor: 'text-orange-500'
-  },
-  {
-    id: 'realtime',
-    icon: Network,
-    title: 'Real-Time Communication',
-    description: 'WebSocket connections enable instant message delivery to all connected users without polling or refresh.',
-    items: [
-      'Sub-100ms message delivery',
-      'Persistent connections reduce overhead',
-      'Broadcast to all active connections',
-      'No polling or refresh required'
-    ],
-    borderColor: 'border-cyan-500',
-    iconColor: 'text-cyan-500'
-  },
-  {
-    id: 'storage',
-    icon: Database,
-    title: 'Managed Data Storage',
-    description: 'Fully managed database with automatic scaling and built-in backups. No database administration required.',
-    items: [
-      'Automatic scaling with demand',
-      'Encrypted storage with automatic backups',
-      'Pay-per-request pricing model',
-      'Point-in-time recovery available'
+      'Live WebSocket API handling real-time connections',
+      'Functional chat interface with message broadcasting',
+      'Message history retrieval working correctly',
+      'Connection management (connect/disconnect) operational',
+      'Complete infrastructure deployed via Terraform'
     ],
     borderColor: 'border-green-500',
     iconColor: 'text-green-500'
   },
   {
-    id: 'infrastructure',
-    icon: Database,
-    title: 'Infrastructure as Code',
-    description: 'Version-controlled, reproducible infrastructure that scales with your team. Deploy in minutes, not days.',
+    id: 'services',
+    icon: Layers,
+    title: 'AWS Services & Their Purpose',
+    description: 'Each service plays a specific role in the architecture, working together to deliver the complete solution.',
     items: [
-      'Terraform manages entire infrastructure',
-      'Version-controlled for auditability',
-      'Reproducible deployments across environments',
-      'State locking prevents conflicts'
+      'API Gateway WebSocket API: Real-time bidirectional communication',
+      'Lambda Functions: Serverless compute for connection/auth/messaging',
+      'DynamoDB: NoSQL database for connections and message storage',
+      'IAM: Least privilege access controls for security',
+      'Terraform: Infrastructure as Code for reproducible deployments'
     ],
     borderColor: 'border-blue-500',
     iconColor: 'text-blue-500'
@@ -87,17 +62,34 @@ const benefits: Benefit[] = [
   {
     id: 'security',
     icon: Shield,
-    title: 'Security & Authentication',
-    description: 'Enterprise-grade security built into every layer, protecting users and data from common threats.',
+    title: 'Security & Auditing Considerations',
+    description: 'Enterprise-grade security built into every layer with comprehensive auditing capabilities.',
     items: [
-      'Username validation before connection',
-      'Server-side protection against malicious input',
-      'Prevents user impersonation',
-      'Least privilege access controls',
-      'Encrypted data storage'
+      'Lambda Authorizer validates usernames before WebSocket connections',
+      'Server-side input validation prevents XSS and injection attacks',
+      'Username verification from DynamoDB prevents impersonation',
+      'IAM least privilege: Scoped permissions to specific resources only',
+      'Encryption at rest: DynamoDB tables encrypted with AWS managed keys',
+      'CloudWatch Logs: Complete audit trail of all Lambda invocations'
     ],
     borderColor: 'border-red-500',
     iconColor: 'text-red-500'
+  },
+  {
+    id: 'requirements',
+    icon: Users,
+    title: 'Customer Requirements Met',
+    description: 'All specified requirements have been successfully implemented and verified.',
+    items: [
+      'Real-time message delivery to all connected users',
+      'Username-based authentication and validation',
+      'Message history retrieval functionality',
+      'Scalable serverless architecture',
+      'Cost-effective solution using AWS Free Tier',
+      'Infrastructure as Code for maintainability'
+    ],
+    borderColor: 'border-orange-500',
+    iconColor: 'text-orange-500'
   }
 ]
 

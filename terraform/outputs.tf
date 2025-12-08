@@ -23,3 +23,8 @@ output "messages_table_name" {
   value       = aws_dynamodb_table.messages.name
 }
 
+output "authorizer_function_name" {
+  description = "Lambda Authorizer function name"
+  value       = aws_lambda_function.authorizer.function_name
+}
+

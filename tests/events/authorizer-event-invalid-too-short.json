@@ -1,0 +1,7 @@
+{
+  "queryStringParameters": {
+    "username": "A"
+  },
+  "routeArn": "arn:aws:execute-api:us-east-1:123456789012:abc123/$connect"
+}
+

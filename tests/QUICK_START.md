@@ -21,13 +21,36 @@ chmod +x tests/test-lambdas.sh
 
 # Test a specific function
 ./tests/test-lambdas.sh onConnect
+
+# Test authorizer function
+./tests/test-lambdas.sh authorizer
 ```
 
 ## 📋 What Gets Tested
 
-- ✅ **onConnect**: Connection with username, connection without username (anonymous)
-- ✅ **onDisconnect**: Disconnection handling
-- ✅ **sendMessage**: Message sending with username, anonymous message sending
+- ✅ **onConnect**: 
+  - Connection with username
+  - Connection without username (anonymous)
+  - Invalid username format validation
+  - Authorizer context handling
+  
+- ✅ **onDisconnect**: 
+  - Disconnection handling
+  
+- ✅ **sendMessage**: 
+  - Message sending with username
+  - Anonymous message sending
+  - Empty message validation
+  - Message length validation (max 1000 chars)
+  - getHistory action
+  - Invalid JSON handling
+  
+- ✅ **authorizer**: 
+  - Valid username authorization
+  - Anonymous user authorization
+  - Invalid username rejection (empty, too short, too long)
+  - Special character validation
+  - XSS attack prevention
 
 ## 📁 Test Structure
 
