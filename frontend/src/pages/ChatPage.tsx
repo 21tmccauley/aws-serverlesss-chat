@@ -4,6 +4,7 @@ import { Moon, Sun, Send, Wifi, WifiOff, AlertCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket'
 import { getUsername, setUsername, DEFAULT_USERNAME } from '../utils/username'
+import { isDarkMode, toggleTheme as toggleThemeUtil } from '../utils/theme'
 import UsernameDialog from '../components/UsernameDialog'
 
 interface Message {
@@ -75,8 +76,7 @@ export default function ChatPage() {
   })
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark')
-    setIsDark(isDarkMode)
+    setIsDark(isDarkMode())
   }, [])
 
   useEffect(() => {
@@ -92,8 +92,7 @@ export default function ChatPage() {
   )
 
   const toggleTheme = () => {
-    const html = document.documentElement
-    html.classList.toggle('dark')
+    toggleThemeUtil()
     setIsDark(!isDark)
   }
 

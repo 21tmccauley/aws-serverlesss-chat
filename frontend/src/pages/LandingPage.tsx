@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Moon, Sun } from 'lucide-react'
+import { isDarkMode, toggleTheme as toggleThemeUtil } from '../utils/theme'
 
 export default function LandingPage() {
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark')
-    setIsDark(isDarkMode)
+    setIsDark(isDarkMode())
   }, [])
 
   const toggleTheme = () => {
-    const html = document.documentElement
-    html.classList.toggle('dark')
+    toggleThemeUtil()
     setIsDark(!isDark)
   }
 

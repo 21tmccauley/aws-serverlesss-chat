@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Moon, Sun, ArrowLeft, Presentation, Code, Network, Zap, Database, Shield, Send, Users, MessageSquare, Globe } from 'lucide-react'
+import { isDarkMode, toggleTheme as toggleThemeUtil } from '../utils/theme'
 import BenefitsSlideDeck from '../components/BenefitsSlideDeck'
 import DevOpsSlideDeck from '../components/DevOpsSlideDeck'
 import MermaidDiagram from '../components/MermaidDiagram'
@@ -1063,13 +1064,11 @@ export default function LearnMorePage() {
   }
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark')
-    setIsDark(isDarkMode)
+    setIsDark(isDarkMode())
   }, [])
 
   const toggleTheme = () => {
-    const html = document.documentElement
-    html.classList.toggle('dark')
+    toggleThemeUtil()
     setIsDark(!isDark)
   }
 
