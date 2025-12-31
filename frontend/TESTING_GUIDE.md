@@ -1,214 +1,190 @@
-# WebSocket Integration Testing Guide
+# Testing Guide - Getting Started
 
-This guide explains how to test the WebSocket integration as you build and debug.
+## ✅ Setup Complete!
 
-## Quick Start
+Your testing environment is now fully configured and working. All 21 tests are passing!
 
-1. **Start the development server:**
-   ```bash
-   cd frontend
-   npm run dev
+## 📁 What's Been Set Up
+
+### Configuration Files
+- ✅ `vitest.config.ts` - Vitest configuration with jsdom environment
+- ✅ `src/test/setup.ts` - Test setup file (runs before each test)
+- ✅ `tsconfig.json` - Updated with Vitest types
+- ✅ `package.json` - Test scripts added
+
+### Test Files Created
+- ✅ `src/utils/__tests__/username.test.ts` - 14 tests for username utilities
+- ✅ `src/components/__tests__/UsernameDialog.test.tsx` - 7 tests for UsernameDialog component
+
+## 🚀 Available Commands
+
+```bash
+# Run tests in watch mode (recommended during development)
+npm test
+
+# Run tests once
+npm test -- --run
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests with UI (visual test runner)
+npm run test:ui
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+## 📚 Test Examples to Study
+
+### 1. Utility Function Tests (`username.test.ts`)
+Learn how to test:
+- ✅ Pure functions (functions without side effects)
+- ✅ localStorage interactions
+- ✅ Input validation
+- ✅ Edge cases (empty strings, too long, special characters)
+- ✅ Multiple test cases for the same function (using `describe` blocks)
+
+**Key Concepts:**
+- `describe()` - Groups related tests
+- `it()` or `test()` - Individual test case
+- `expect()` - Assertions (what you're checking)
+- `beforeEach()` - Runs before each test (cleanup)
+
+### 2. React Component Tests (`UsernameDialog.test.tsx`)
+Learn how to test:
+- ✅ Component rendering
+- ✅ User interactions (typing, clicking)
+- ✅ Form submissions
+- ✅ Conditional rendering (when `isOpen` is false)
+- ✅ Callback functions (`onConfirm`, `onClose`)
+
+**Key Concepts:**
+- `render()` - Renders React component
+- `screen` - Queries the rendered component
+- `getByRole()`, `getByText()`, `getByLabelText()` - Ways to find elements
+- `userEvent` - Simulates user interactions
+- `waitFor()` - Waits for async updates
+
+## 🎯 Next Steps: Writing Your Own Tests
+
+### Exercise 1: Test the `validateUsername` function
+The `validateUsername` function has tests, but try adding:
+- Test for username with only spaces
+- Test for username at exactly 2 characters (boundary)
+- Test for username at exactly 20 characters (boundary)
+
+### Exercise 2: Test a Simple Component
+Create a test for a simpler component first. Look at `src/components/MermaidDiagram.tsx` or create a simple button component and test:
+- Renders correctly
+- Calls onClick handler when clicked
+- Shows correct text/label
+
+### Exercise 3: Test `useWebSocket` Hook
+This is more advanced! You'll need to:
+- Mock the WebSocket API
+- Test connection states
+- Test message sending/receiving
+- Test error handling
+
+### Exercise 4: Test `ChatPage` Component
+The most complex component. You'll need to:
+- Mock the `useWebSocket` hook
+- Test message display
+- Test message sending
+- Test connection status display
+
+## 📖 Learning Resources
+
+### Testing Library Queries (in order of preference)
+1. **`getByRole`** - Best! Accessible and semantic
+   ```ts
+   screen.getByRole('button', { name: /submit/i })
+   screen.getByRole('textbox', { name: /username/i })
    ```
 
-2. **Open the chat page:**
-   - Navigate to `http://localhost:5173/chat`
-   - You'll be prompted to enter a username (or use "Anonymous")
+2. **`getByLabelText`** - Good for form inputs
+   ```ts
+   screen.getByLabelText('Username')
+   ```
 
-3. **Check the browser console:**
-   - All WebSocket events are logged automatically
-   - Look for `[WebSocket ...]` messages
+3. **`getByText`** - For text content
+   ```ts
+   screen.getByText('Welcome')
+   ```
 
-## Testing Utilities
+4. **`getByTestId`** - Last resort (add `data-testid` to components)
+   ```ts
+   screen.getByTestId('submit-button')
+   ```
 
-The app includes built-in testing utilities accessible from the browser console.
-
-### Available Commands
-
-Open your browser's developer console (F12) and use these commands:
-
-#### `__testWs()`
-Run all WebSocket tests (connection + message sending)
-```javascript
-__testWs()
+### Common Matchers
+```ts
+expect(element).toBeInTheDocument()
+expect(element).toHaveClass('active')
+expect(element).toHaveTextContent('Hello')
+expect(element).toBeDisabled()
+expect(function).toHaveBeenCalled()
+expect(function).toHaveBeenCalledWith('arg1', 'arg2')
+expect(value).toBe(5)
+expect(value).toEqual({ name: 'test' })
+expect(array).toHaveLength(3)
 ```
 
-#### `__testWsConnection()`
-Test just the WebSocket connection
-```javascript
-__testWsConnection()
+### Async Testing
+```ts
+// Wait for something to appear
+await waitFor(() => {
+  expect(screen.getByText('Success')).toBeInTheDocument()
+})
+
+// Wait for function to be called
+await waitFor(() => {
+  expect(mockFunction).toHaveBeenCalled()
+})
 ```
 
-#### `__testWsSend(message)`
-Test sending a message through WebSocket
-```javascript
-__testWsSend("Hello from test!")
-```
+## 🐛 Common Issues & Solutions
 
-#### `__getWsLogs()`
-View all WebSocket logs in a table format
-```javascript
-__getWsLogs()
-```
+### Issue: "localStorage is not defined"
+**Solution:** Make sure `environment: 'jsdom'` is in `vitest.config.ts` ✅ (Already fixed!)
 
-#### `__clearWsLogs()`
-Clear the WebSocket logs
-```javascript
-__clearWsLogs()
-```
+### Issue: "Cannot find module"
+**Solution:** Check your imports. Make sure file paths are correct.
 
-### Accessing Logs Programmatically
+### Issue: Test passes but component doesn't work in browser
+**Solution:** Tests are isolated - they don't catch integration issues. Test in browser too!
 
-The logs are also stored in the `window` object:
+### Issue: "Act warnings"
+**Solution:** Use `waitFor()` for async updates or `userEvent` which handles this automatically.
 
-```javascript
-// View all logs
-window.__wsLogs
+## 📊 Coverage Goals
 
-// View the last log entry
-window.__lastWsLog
-```
+Current coverage: Run `npm run test:coverage` to see!
 
-## Testing Scenarios
+**Target Coverage:**
+- Utilities: 90%+
+- Components: 70%+
+- Hooks: 80%+
+- Overall: 80%+
 
-### 1. Basic Connection Test
+## 🎓 Testing Philosophy
 
-1. Open the chat page
-2. Check the connection status indicator in the header (should show "Connected" with green icon)
-3. Check browser console for `[WebSocket CONNECTED]` message
+1. **Test behavior, not implementation** - Test what the user sees/experiences
+2. **Test user interactions** - Click, type, submit (what users do)
+3. **Test edge cases** - Empty inputs, errors, boundaries
+4. **Keep tests simple** - One thing per test
+5. **Descriptive test names** - "should do X when Y happens"
 
-### 2. Send and Receive Messages
+## ✨ Practice Challenges
 
-1. Open the chat page in **two different browser windows** (or tabs)
-2. Use different usernames for each window
-3. Send a message from one window
-4. Verify it appears in both windows
-5. Check console logs in both windows
+1. ✅ **Easy:** Add 3 more test cases to `username.test.ts`
+2. ⭐ **Medium:** Write tests for `clearUsername()` function
+3. ⭐⭐ **Hard:** Test the `useWebSocket` hook with mocked WebSocket
+4. ⭐⭐⭐ **Expert:** Write E2E test using Playwright (Phase 1, Week 3)
 
-### 3. Reconnection Test
+---
 
-1. Connect to the chat
-2. Disconnect your internet (or stop the backend)
-3. Watch the connection status change to "Error" or "Disconnected"
-4. Reconnect your internet
-5. Verify automatic reconnection (check console logs)
+**Happy Testing! 🧪**
 
-### 4. Username Management
-
-1. Open chat page - should prompt for username
-2. Enter a username and submit
-3. Refresh the page - should remember your username
-4. Click on your username in the header to change it
-5. Verify the WebSocket reconnects with the new username
-
-### 5. Multiple Users Test
-
-1. Open 3-4 browser windows/tabs
-2. Use different usernames for each
-3. Send messages from different windows
-4. Verify all messages appear in all windows
-5. Check that usernames are displayed correctly
-
-## Debugging Tips
-
-### Check WebSocket URL
-
-The WebSocket URL should be configured in `.env.local`:
-```env
-VITE_WEBSOCKET_URL=wss://your-api-id.execute-api.region.amazonaws.com/stage
-```
-
-To verify it's loaded:
-```javascript
-console.log(import.meta.env.VITE_WEBSOCKET_URL)
-```
-
-### Common Issues
-
-#### Connection Fails Immediately
-- Check that the WebSocket URL is correct
-- Verify the backend is deployed and running
-- Check browser console for CORS or connection errors
-- Verify the URL uses `wss://` (secure WebSocket)
-
-#### Messages Not Appearing
-- Check browser console for `[WebSocket MESSAGE_RECEIVED]` logs
-- Verify the message format matches what the backend expects
-- Check that the `sendMessage` action is included in the payload
-
-#### Username Not Working
-- Check localStorage: `localStorage.getItem('chat_username')`
-- Verify username is passed as query parameter in WebSocket URL
-- Check backend logs to see if username is received
-
-### Browser Console Logs
-
-The WebSocket hook logs all important events:
-
-- `CONNECTING` - Attempting to connect
-- `CONNECTED` - Successfully connected
-- `MESSAGE_SENT` - Message sent to server
-- `MESSAGE_RECEIVED` - Message received from server
-- `CLOSED` - Connection closed
-- `ERROR` - Connection or message error
-- `RECONNECT_SCHEDULED` - Automatic reconnection scheduled
-- `RECONNECTING` - Attempting to reconnect
-
-## Manual Testing Checklist
-
-- [ ] Connection establishes on page load
-- [ ] Username dialog appears if no username stored
-- [ ] Username is saved to localStorage
-- [ ] Connection status indicator shows correct state
-- [ ] Messages can be sent when connected
-- [ ] Messages are received from other users
-- [ ] Messages display with correct username
-- [ ] Timestamps are formatted correctly
-- [ ] Input is disabled when disconnected
-- [ ] Reconnect button appears on error
-- [ ] Automatic reconnection works
-- [ ] Multiple browser windows can connect simultaneously
-- [ ] Messages broadcast to all connected clients
-
-## Network Tab Inspection
-
-In Chrome DevTools Network tab:
-
-1. Filter by "WS" (WebSocket)
-2. Click on the WebSocket connection
-3. Check the "Messages" tab to see:
-   - Outgoing messages (what you send)
-   - Incoming messages (what you receive)
-   - Connection frames
-
-## Backend Verification
-
-To verify the backend is working:
-
-1. Check AWS CloudWatch logs for Lambda functions
-2. Check DynamoDB tables:
-   - `Connections` table should have active connections
-   - `Messages` table should have message history
-3. Use the test script: `tests/test-lambdas.ps1`
-
-## Performance Testing
-
-For load testing:
-
-1. Open multiple browser windows (10+)
-2. Send messages rapidly from different windows
-3. Monitor:
-   - Message delivery time
-   - Connection stability
-   - Browser console for errors
-   - Backend logs for performance
-
-## Next Steps
-
-Once basic functionality works:
-
-1. Test error handling (network interruptions)
-2. Test edge cases (very long messages, special characters)
-3. Test on different browsers
-4. Test on mobile devices
-5. Test with slow network connections
-
+Remember: The goal isn't 100% coverage - it's confidence that your code works correctly!
